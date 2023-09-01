@@ -1,0 +1,8 @@
+name: hello-world-action
+run-name: ${{ github.actor }} executes hello world
+on: [push]
+jobs:
+  exec-hello-world:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Hello world"

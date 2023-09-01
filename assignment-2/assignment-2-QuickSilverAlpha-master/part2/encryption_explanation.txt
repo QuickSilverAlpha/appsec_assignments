@@ -1,0 +1,74 @@
+Write-up on encrypting the database
+------------------------------------
+
+Encryption:
+-----------
+
+We use the djfernet library to encrypt the card.data field. Since, the card.data field in the models.py is a binary
+field, we modified that with EncryptedBinaryField. This made sure we have an encrypted binary field in our database. We
+use the djfernet as it is open source and compatible with django and handles the encryption and decryption of data on
+its own. We also purged the database and migrated a new one with new data in it. After this change, we bought a few
+gift cards and saw that that card.data blob is encrypted and base64 encoded.
+
+Handling the encrypted data:
+-----------------------------
+
+The card.data field is used in buying and using the gift cards. Once the model was changed to support the encryption, we
+could not use the older retrieval process of straightaway querying the database as now the blob is encrypted. For this
+we made changes in the retrieval process in the views.py. We used Card.objects.all() to fetch all the cards in the db
+and interate over them. We make sure that the provided card is not already used. The Card.objects.all() does the
+decryption for us but the data is returned in bytes. We decode the card.data and load up the decoded str as a json to
+get the signature. If the signature matches, we fetch the card through the card.id and mark the card as used
+(card.used=True).
+
+Secret Key Management for encryption
+-------------------------------------
+
+Our objective here is to prevent the loss of sensitive data to an attacker even in case of an attack. For this, we
+implemented the most encryption. The encryption is as good as its secret key, therefore, the utmost priority is to
+protect the key. Following is the threat model of prevention of loss of the key i.e. database secret key management.
+
+    Threat Model:
+        Threat: If the attacker somehow gets to the  database, the attacker can steal the encryption key.
+
+        Risk: If the attacker is able to steal/ obtain the key, then all the data is lost and the entire process of
+        preventing the loss of data due to encryption is rendered useless.
+
+        Recommendations:
+            1) Store the key in a file: We can store the key in the .py file.
+                Pros: Easy to implement
+                Cons: This is not the optimal solution as this may prevent the attacker from getting data SQLi, however,
+                if the is accompanied by some other vulnerability like RCE or directory traversal, the attacker can read
+                the content of the file and obtain the key.
+
+            2) Store the key in code file and convert python to a binary using pyinstaller or similar process.
+                Pros: Easy to implement
+                Cons: The binaries can generally be decompiled and strings can be found out. So, it is still not an
+                      optimal solution.
+
+            3) Use Vaults such as Hashi vault
+                Pros: Key becomes highly safe inside the vault.
+                Cons: Costly.
+                      The vault key management is still an issue.
+                      Portability becomes an issue.
+
+            4) Store the key in the environment variable:
+                Pros: Easy to implement.
+                      Secure as only the env that is running the code has access to the variable. This way even if the
+                      attacker gets the access to the system, they will not be able to get the key and hence the data.
+                Cons: Adds an extra step to the installation.
+                      Someone trusted is required to correctly set the env variable when the process starts.
+
+    Implemented Solution:
+        We chose the "Store the key in the environment variable" solution as we found it to be the most optimal. Though
+        to be completely secure we can have a combination of solution 3 and 4 if it is viable.
+
+        Solution description: We obtain the key from the DB_SECRET_KEY env variable. This can be set as part of the
+        initialization/ bootstrap process. In settings.py the SECRET_KEY is picked up using the
+        os.environ.get("DB_SECRET_KEY").
+
+Github actions to test the capability
+--------------------------------------
+
+To test the buy and use capabilities we have created a test test_buy_and_use() in tests.buy. This will be invoked as
+part of the github action workflow. We also set and check the DB_SECRET_KEY env for the database secret key retrieval.

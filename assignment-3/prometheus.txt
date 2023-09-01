@@ -1,0 +1,48 @@
+PROMETHEUS WRITE-UP
+--------------------
+
+Part 2.1: Remove unwanted monitoring
+-------------------------------------
+
+In the GiftcardSite/LegacySite/views.py file, under register_view() function, we see a counter created for each 
+password that is created by the name of counter_{password}, trying to track what passwords are being used by 
+the users. This is unwanted tracking and we removed/ commencted this tracking. There are better ways to track the 
+suggested usecase. This just exposes all the passwords on the Prometheus UI.
+
+
+Part 2.2: Expand reasonable monitoring
+---------------------------------------
+
+To add monitoring for HTTP 404 messages we added a prometheus_client Counter named database_error_return_404. The 
+following line is added in the GiftcardSite/LegacySite/views.py: 
+
+graphs['404_counter'] = Counter('database_error_return_404', 'The total number'\
+  + ' of HTTP 404 on the website')
+
+We also added the graphs['404_counter'].inc() to increment the counter wherever the 404 Error is returned in the 
+views.py so that we can properly track the 404 DB errors.
+
+Part 2.3: Add Prometheus
+-------------------------
+
+To add Prometheus, we had to add helm, first. We added the helm from the Ubuntu package manager by adding the helm 
+package manager in the sources.list. We, then used the helm to install the Prometheus. The following command is 
+used:
+
+helm install prometheus prometheus-community/prometheus
+
+We used the kubectl configmaps to edit the yaml file to include a new job called proxy-service under the scrape_configs 
+that targets -> proxy-service:8080
+
+    - job_name: proxy-service
+      static_configs:
+      - targets: ["proxy-service:8080"]
+
+We persisted these changes in the prometheus-proxy-server.yaml file by using the the following command:
+
+   kubectl get configmap prometheus-server -o yaml > prometheus-proxy-server.yaml
+
+We can use this prometheus-proxy-server.yaml for the next time when we start prometheus via helm.
+
+Once these changes were made, we could see the all the counters under different graphs on the Prometheus UI. We were 
+also able to verfiy these counts on the /metrics page on the Giftcard website.

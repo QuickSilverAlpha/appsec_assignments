@@ -1,0 +1,20 @@
+name: test_django
+run-name: ${{ github.actor }} performs regression tests on the django based application
+on: [push]
+jobs:
+        test_django:
+                runs-on: ubuntu-latest
+                env:
+                  DB_SECRET_KEY: kmgysa#fz+9(z1*=c0ydrjizk*7sthm2ga1z4=^61$cxcq8b$l
+                steps:
+                        - name: checkout repo
+                          uses: actions/checkout@v3
+
+                        - name: Install Dependencies
+                          run: pip3 install django djfernet
+
+                        - name: check env variable
+                          run: echo $DB_SECRET_KEY
+
+                        - name: Run tests
+                          run: python3 manage.py test

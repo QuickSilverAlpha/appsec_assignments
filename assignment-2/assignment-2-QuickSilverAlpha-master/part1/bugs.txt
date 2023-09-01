@@ -1,0 +1,83 @@
+BUG WRITEUP
+------------
+
+Bug1:
+------ 
+
+    Cause: xss.txt
+    
+    Issue: On debugging, we identified that the director input field in item-single.html is considered as "safe". The
+    safe flag forces the django to consider this field as safe, hence disabling the default html escaping. This can
+    lead to a reflective XSS as the user can execute a malicious javascript through a get request that contains the
+    attack vector as the value of the "director" key
+
+    Exploit: The xss.txt contains a URL that executes exploiting the R-XSS vulnerability and raises an alert box with
+    message "RA" on the victim's browser.
+
+    Fix: There are two fixes provided to fix the vulnerability.
+        1) The "director" field in item-single.html is marked as unsafe as the user input cannot be trusted. We have
+        removed the safe flag from the input field, so that django can escape the html that comes from the user.
+
+        2) This fix is for better code practise. We do not trust both the user input and django framework in-built
+        security. So, we explicitly, escape the "director" input that comes from the user in the buy_card_view()
+        function of the LegacySite/views.py
+
+    Similar Fix: Also, fixed the same vulnerability occurring in the "director" field in gift.html. The fix is provided
+    in gift.html and the gift_card_view() function of the LegacySite/views.py.
+
+BUG2:
+------
+
+    Cause: xsrf.html
+
+    Issue: The issue is in the gift_card_view() function of the LegacySite/views.py where a GET request is being used
+    to update the data instead of POST. The second reason is that the POST request is not validated with the CSRF token.
+
+    Exploit: The xsrf.html is an HTML page if opened in the browser where a victim is authenticated, it will
+    automatically send a GET request that will send a "test2" user a gift card worth $999 on behalf of the victim
+    without the victim's knowledge.
+
+    Fix: The fix is provided in elif statement in the gift_card_view() function of the LegacySite/views.py. We have
+    removed the OR condition for the GET request as GET request cannot be used to update data.
+
+    Second, we have also introduced the csrf token in the /gift/0 form in the gift.html and the is validated in the
+    gift_card_view() function of the LegacySite/views.py so that a CSRF from a POST request can be handled as well.
+
+    We have added an else condition to handle the bad requests too.
+
+BUG3:
+------
+
+    Cause: sqli.giftcrd
+
+    Issue: The issue is in the use_card_view() function of the LegacySite/views.py in the elif condition
+    where a POST request that uploads card can cause a SQL injection as the user input is used directly in the raw query
+    while fetching the signature from the gift card.
+
+    Exploit: The sql.gftcrd in the signature field has the signature followed by a unionized query that fetches the hash
+    of the admin's password.
+
+    Fix: The fix is to utilize the parameterized SQL queries. To achieve this we have made the user input in [] so that
+    it is not treated as a SQL command but a user input and hence it should not be able to break the actual query with
+    the sql delimiter.
+
+BUG4:
+------
+
+    Cause: cmdi.txt
+
+    Issue: The issue is caused because the user is able to manipulate the file creation that is created via an unsafe
+    os.system. This issue resides in the use_card_view() function of the LegacySite/extras.py.
+
+    Exploit: The exploit POST request URL and the post-data is mentioned in the part1/cmdi.txt. The exploit sends a
+    malicious name of the file in the "card_fname" field that executes the echo hello command on the server.
+
+    Fix: The fix is done in two ways:
+        -> Input Sanitization: The field "card_fname" is sanitized. Since, it is just a name, it should just have
+        alphanumeric characters in the name. Any other characters present are removed.
+
+        -> Safe command execution function: This fix includes using a safe function to execute the command along with
+        tokenizing and escaping the user input properly before actually executing it. This is achieved by shlex.quote()
+        to properly escape the user input, so it is not considered as a command.
+        We also use shlex.split() to properly tokenize the commands before executing it.
+        And, finally, we use a safe function subprocess.run() without shell=True to execute the tokenized args.

@@ -1,0 +1,37 @@
+BUG WRITEUP
+------------
+
+Bug1:
+------ 
+
+    Cause: crash1.gft
+    
+    Issue: On debugging, the developer found the issue to be in the "gift_card_reader" function. The issue arose due to the improper handling of the "ret_val->num_bytes" length of the gift card. The program mallocs the "ret_val->num_bytes" without checking the length. The malloc could return a null and could cause a segfault.
+
+    Exploit: Create a giftcard through gengift_crash1.py. The giftcard is created with a length that is greater than the size of the integer. When the program reads the length though fread, it reads the and int overflows it to a negative value. Hence, malloc fails leading to failure of the next fread at line 211. Therefore, the program segfaults.
+
+    Fix: A check is created to handle the overflow. It checks that the length can never be -ve and if it is the giftcard is marked as invalid.
+
+
+BUG2:
+------
+
+    Cause: crash2.gft
+
+    Issue: The issue is in the "animate" function in the 0x01 switchcase. The issue arises due to improper handling of the regs[16] bounds.
+
+    Exploit: Create a giftcard through the genanim_crash2.py. The resulting giftcard has an opcode that is read as arg1 which is > 16 bytes (0x01, (int 25)). Since 25 > 16 bytes, there is an out of bound write on array regs at regs[arg1] = *mptr. This leads to a write on 25th index that is out of bounds for an array of size 16.
+
+    Fix: The fix is provided in the 0x01 switchcase where the upper and the lower bounds of the array are checked before writing on a specific index of the array.
+
+
+BUG3:
+------
+
+    Cause: hang.gft
+
+    Issue: This issue is identified again in the "animate" function but in the 0x09 switchcase. The issue arose because of the improper handling of the char typecast of arg1. There is a possibility for the pc to get overflowed to a negative number that can lead to the while loop going infinitely and hence, the program hangs.
+
+    Exploit: The testcase can be regenerated from the genanim_hang.py. The py creates a giftcard that has the value of 0xfd that translates to decimal 253. 253 is greater than the largest value of char and hence it overflows to a -3 when the arg1 is typecasted to char. This makes the value of pc as -3. Later on line 75 after the switchcase, pc adds is 3 to itself making the resulting value of pc as 0 forever. Since 0 is always satisfies the "while (pc < program+256)" condition, the program never exits the while loop and hangs.
+
+    Fix: The fix is provided in the 0x09 switchcase where the pc += (char)arg1 is changed to pc += (unsigned char)arg1. This makes sure the typecasted value of arg is always positive. Therefore, the pc will always increment and would never end up as a 0. This prevents the program to go into an infinte loop.

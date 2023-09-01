@@ -1,0 +1,4 @@
+http://127.0.0.1:8000/use.html
+card_supplied=True
+card_data={"RA": "Lets perform CMDi",,}
+card_fname=bla.txt; echo hello;

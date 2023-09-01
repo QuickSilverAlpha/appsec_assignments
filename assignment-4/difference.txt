@@ -1,0 +1,43 @@
+Write-Up
+---------
+
+1) What are the two types of Intents?
+A. There are two different types of intents:
+
+    a) Implicit Intent: This intent is a broadcast to all the elements that can handle that intent.
+    The intent specifies the request details, components and other information sufficient enough for
+    the system to determine all the components that can handle the intent.
+
+    b) Explicit Intent: These intents a specified components that is set via setComponent, setClass,
+    etc. These won't have additional details as the mentioned component is capable enough to handle
+    the intent. This provides a simple way to perform various internal activities.
+
+2) Which of the two types of Intents is (generally) more secure?
+A. Generally, the explicit intents are more secure as we exactly know which components are specified
+to handle the intents. Also, explicit provides us better flow-control of the code and handle the
+intents in the best way possible. This way we also have trusted and verified intents handled by
+trusted components.
+
+3) What type of Intent is shown on lines 69 to 73 of SecondFragment.kt?
+A. The Intent used in SecondFragment.kt is an implicit intent. We can see that the intent is
+Intent.ACTION_VIEW that calls for an action with no explicit mention via setComponent etc. and
+there is bunch of other information like type and data that is provided for the system to handle the
+intent.
+
+4) What type of Intent is shown on lines 68 to 70 of ThirdFragment.kt?
+A. The Intent used here in ThirdFragment.kt is the explicit intent. We can see that the intent
+explicitly uses the ProductScrollingActivity class that is the part of the internal application.
+
+5) Which of these two Intents is the proper way to do an Intent?
+A. In most of the scenarios, the explicit intent is adequate enough and hence the proper way to do
+an Intent. These also gives us better flow control and makes it secure. However, there may be some
+use cases where we don't know which activity can handle our request. So, in cases such as these we
+may have to use implicit intents as they provide more flexibility.
+
+-> As the last question above hinted, one of these two Intents is not correct. Fix the incorrect
+Intent, then in 3 sentences or less discuss in difference.txt which file you modified and why.
+
+We saw that the Intent in the SecondFragment.kt is an Implicit Intent. We know based on the
+reasoning above the implicit intents are less secure. So, we have changed this to an Explicit Intent
+as we know that the internal ProductScrollingActivity Class can handle this Intent. So, we
+explicitly specify the class like it is done in the ThirdFragment.kt.

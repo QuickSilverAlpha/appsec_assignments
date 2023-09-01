@@ -1,0 +1,11 @@
+name: make_and_test_giftcardreader
+run-name: ${{ github.actor }} performs make test operation that makes the giftcardreader and executes testcases
+on: [push]
+jobs:
+        build-and-test-giftcardreader:
+                runs-on: ubuntu-latest
+                steps:
+                        - name: checkout repo
+                          uses: actions/checkout@v3
+                        - name: build and test application
+                          run: make test

